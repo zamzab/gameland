@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR Bike Race</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="screen-body">
+    <main class="screen">
+      <section class="race-topbar">
+        <div>
+          <p class="kicker">QR Bike Race</p>
+          <h1>みんなでペダルレース</h1>
+        </div>
+        <div class="join-panel">
+          <img id="qr" alt="参加用QRコード" />
+          <div>
+            <span>スマホで参加</span>
+            <strong id="join-url"></strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="track-wrap" aria-label="レース画面">
+        <div class="track-label start-label">START</div>
+        <div class="track-label goal-label">GOAL</div>
+        <div class="track" id="track"></div>
+        <div class="overlay" id="overlay"></div>
+      </section>
+
+      <section class="race-footer">
+        <div id="status">QRコードを読み込んで参加してください</div>
+        <button id="reset-button" type="button">リセット</button>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/screen.js"></script>
+  </body>
+</html>
