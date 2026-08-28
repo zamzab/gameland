@@ -19,14 +19,10 @@ try {
 }
 
 let myId = storedRider?.id || null;
+let myToken = storedRider?.token || null;
 let myName = storedRider?.name || "";
 let lastPressed = null;
 let fullscreenRequested = false;
-
-const makeClientId = () => {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
 
 const showController = (name) => {
   myName = name;
@@ -47,15 +43,16 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   requestFullscreenOnce();
   const name = input.value.trim().replace(/\s+/g, "").slice(0, 4);
-  const clientId = myId || makeClientId();
-  socket.emit("join", { name, clientId }, (response) => {
+  socket.emit("join", { name, playerId: myId, resumeToken: myToken }, (response) => {
     if (!response?.ok) {
       message.textContent = response?.message || "参加できませんでした";
+      if (!myToken) localStorage.removeItem(storageKey);
       return;
     }
 
     myId = response.playerId;
-    localStorage.setItem(storageKey, JSON.stringify({ id: myId, name }));
+    myToken = response.resumeToken;
+    localStorage.setItem(storageKey, JSON.stringify({ id: myId, token: myToken, name }));
     showController(name);
   });
 });
@@ -111,19 +108,20 @@ socket.on("state", (state) => {
 });
 
 socket.on("connect", () => {
-  if (!myId) return;
+  if (!myId || !myToken) return;
 
-  socket.emit("resume", myId, (response) => {
+  socket.emit("resume", { playerId: myId, resumeToken: myToken }, (response) => {
     if (!response?.ok) {
       localStorage.removeItem(storageKey);
       myId = null;
+      myToken = null;
       nameCard.classList.remove("hidden");
       controller.classList.add("hidden");
       return;
     }
 
     myId = response.playerId;
-    localStorage.setItem(storageKey, JSON.stringify({ id: myId, name: response.name }));
+    localStorage.setItem(storageKey, JSON.stringify({ id: myId, token: myToken, name: response.name }));
     showController(response.name);
   });
 });
@@ -131,6 +129,7 @@ socket.on("connect", () => {
 socket.on("reset-game", () => {
   localStorage.removeItem(storageKey);
   myId = null;
+  myToken = null;
   myName = "";
   lastPressed = null;
   input.value = "";

@@ -1,5 +1,7 @@
 import express from "express";
+import helmet from "helmet";
 import http from "node:http";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import QRCode from "qrcode";
@@ -22,6 +24,7 @@ const HOST = "0.0.0.0";
 const MAX_PLAYERS = 5;
 const START_STEP = 8;
 const RACE_STEP = 3;
+const ADMIN_PIN = process.env.ADMIN_PIN || "0000";
 
 const riders = [
   { color: "#e24a4a", key: "red" },
@@ -42,6 +45,23 @@ const freshGame = () => ({
 let game = freshGame();
 
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "ws:", "wss:"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"]
+      }
+    }
+  })
+);
 
 app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true, phase: game.phase, players: game.players.length });
@@ -121,6 +141,25 @@ const cleanPlayerId = (value) =>
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 48);
 
+const cleanToken = (value) =>
+  String(value || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 64);
+
+const verifyAdminPin = (payload) => {
+  const supplied = String(payload?.pin || "");
+  const expected = String(ADMIN_PIN);
+  const suppliedBuffer = Buffer.from(supplied);
+  const expectedBuffer = Buffer.from(expected);
+  return suppliedBuffer.length === expectedBuffer.length && timingSafeEqual(suppliedBuffer, expectedBuffer);
+};
+
+const verifyResumeToken = (player, token) => {
+  const suppliedBuffer = Buffer.from(cleanToken(token));
+  const expectedBuffer = Buffer.from(player.resumeToken || "");
+  return suppliedBuffer.length === expectedBuffer.length && timingSafeEqual(suppliedBuffer, expectedBuffer);
+};
+
 const ridersAtStart = () =>
   game.players.length > 0 && game.players.every((player) => player.ready && player.approach >= 100);
 
@@ -166,10 +205,10 @@ const resetGame = () => {
 io.on("connection", (socket) => {
   socket.emit("state", publicState());
 
-  socket.on("resume", (clientId, reply) => {
-    const playerId = cleanPlayerId(clientId);
+  socket.on("resume", (payload, reply) => {
+    const playerId = cleanPlayerId(payload?.playerId ?? payload);
     const player = game.players.find((item) => item.id === playerId);
-    if (!player) {
+    if (!player || !verifyResumeToken(player, payload?.resumeToken)) {
       reply?.({ ok: false });
       return;
     }
@@ -186,7 +225,8 @@ io.on("connection", (socket) => {
       .trim()
       .replace(/\s+/g, "")
       .slice(0, 4);
-    const requestedId = cleanPlayerId(payload?.clientId);
+    const requestedId = cleanPlayerId(payload?.playerId ?? payload?.clientId);
+    const requestedToken = cleanToken(payload?.resumeToken);
 
     if (!cleanName) {
       reply?.({ ok: false, message: "名前を入力してください" });
@@ -200,11 +240,21 @@ io.on("connection", (socket) => {
 
     const existingPlayer = game.players.find((player) => player.id === requestedId);
     if (existingPlayer) {
+      if (!verifyResumeToken(existingPlayer, requestedToken)) {
+        reply?.({ ok: false, message: "参加情報が古くなりました。リセット後に再参加してください" });
+        return;
+      }
+
       socket.data.playerId = existingPlayer.id;
       existingPlayer.name = cleanName;
       existingPlayer.socketId = socket.id;
       existingPlayer.connected = true;
-      reply?.({ ok: true, playerId: existingPlayer.id, lane: existingPlayer.lane });
+      reply?.({
+        ok: true,
+        playerId: existingPlayer.id,
+        resumeToken: existingPlayer.resumeToken,
+        lane: existingPlayer.lane
+      });
       emitState();
       return;
     }
@@ -217,7 +267,6 @@ io.on("connection", (socket) => {
 
     const lane = reusablePlayer?.lane ?? game.players.length;
     const player = reusablePlayer ?? {
-      id: requestedId || socket.id,
       lane,
       color: riders[lane].color,
       colorKey: riders[lane].key,
@@ -228,7 +277,8 @@ io.on("connection", (socket) => {
     };
 
     Object.assign(player, {
-      id: requestedId || player.id,
+      id: randomUUID(),
+      resumeToken: randomUUID(),
       name: cleanName,
       lane,
       color: riders[lane].color,
@@ -245,7 +295,7 @@ io.on("connection", (socket) => {
     if (!reusablePlayer) game.players.push(player);
     if (game.phase === "lobby") game.phase = "staging";
 
-    reply?.({ ok: true, playerId: player.id, lane: player.lane });
+    reply?.({ ok: true, playerId: player.id, resumeToken: player.resumeToken, lane: player.lane });
     emitState();
   });
 
@@ -273,9 +323,25 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("reset", () => resetGame());
+  socket.on("reset", (payload, reply) => {
+    if (!verifyAdminPin(payload)) {
+      reply?.({ ok: false, message: "管理PINが違います" });
+      return;
+    }
 
-  socket.on("start-countdown", () => beginCountdown(true));
+    resetGame();
+    reply?.({ ok: true });
+  });
+
+  socket.on("start-countdown", (payload, reply) => {
+    if (!verifyAdminPin(payload)) {
+      reply?.({ ok: false, message: "管理PINが違います" });
+      return;
+    }
+
+    beginCountdown(true);
+    reply?.({ ok: true });
+  });
 
   socket.on("disconnect", () => {
     const player = getPlayer(socket);

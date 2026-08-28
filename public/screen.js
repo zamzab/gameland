@@ -17,9 +17,65 @@ const START_X = 8.4;
 const GOAL_X = 90.3;
 const laneColorKeys = ["red", "blue", "green", "yellow", "black"];
 const bikeImage = (colorKey) => `/assets/bike-rider-${colorKey || "red"}.png`;
+const adminPinKey = "qr-bike-admin-pin";
+
+const getAdminPin = () => {
+  const savedPin = sessionStorage.getItem(adminPinKey);
+  if (savedPin) return savedPin;
+
+  const enteredPin = window.prompt("管理PINを入力してください") || "";
+  if (enteredPin) sessionStorage.setItem(adminPinKey, enteredPin);
+  return enteredPin;
+};
+
+const emitAdmin = (eventName) => {
+  const pin = getAdminPin();
+  if (!pin) return;
+
+  socket.emit(eventName, { pin }, (response) => {
+    if (response?.ok) return;
+    sessionStorage.removeItem(adminPinKey);
+    window.alert(response?.message || "管理操作に失敗しました");
+  });
+};
+
+const createConfetti = () => {
+  const confetti = document.createElement("div");
+  confetti.className = "confetti";
+  for (let index = 0; index < 80; index += 1) {
+    const piece = document.createElement("i");
+    piece.style.setProperty("--i", index);
+    confetti.append(piece);
+  }
+  return confetti;
+};
+
+const renderWinner = (winner) => {
+  overlay.textContent = "";
+
+  const winnerCard = document.createElement("div");
+  winnerCard.className = "winner-card";
+
+  const winnerBike = document.createElement("div");
+  winnerBike.className = "winner-bike";
+
+  const bike = document.createElement("img");
+  bike.src = bikeImage(winner?.colorKey);
+  bike.alt = "";
+  winnerBike.append(bike);
+
+  const winnerName = document.createElement("strong");
+  winnerName.textContent = winner?.name || "WINNER";
+
+  const winnerText = document.createElement("span");
+  winnerText.textContent = "優勝!";
+
+  winnerCard.append(winnerBike, winnerName, winnerText);
+  overlay.append(winnerCard, createConfetti());
+};
 
 const render = (state) => {
-  track.innerHTML = "";
+  track.replaceChildren();
 
   for (let lane = 0; lane < state.maxPlayers; lane += 1) {
     const player = state.players.find((item) => item.lane === lane);
@@ -90,19 +146,12 @@ const render = (state) => {
   } else if (state.phase === "finished") {
     const winner = state.players.find((player) => player.id === state.winnerId);
     statusText.textContent = `${winner?.name || ""} さんの勝利`;
-    overlay.innerHTML = `
-      <div class="winner-card">
-        <div class="winner-bike"><img src="${bikeImage(winner?.colorKey)}" alt="" /></div>
-        <strong>${winner?.name || "WINNER"}</strong>
-        <span>優勝!</span>
-      </div>
-      <div class="confetti">${Array.from({ length: 80 }, (_, index) => `<i style="--i:${index}"></i>`).join("")}</div>
-    `;
     overlay.className = "overlay finished";
+    renderWinner(winner);
     startButton.disabled = true;
   }
 };
 
 socket.on("state", render);
-resetButton.addEventListener("click", () => socket.emit("reset"));
-startButton.addEventListener("click", () => socket.emit("start-countdown"));
+resetButton.addEventListener("click", () => emitAdmin("reset"));
+startButton.addEventListener("click", () => emitAdmin("start-countdown"));
