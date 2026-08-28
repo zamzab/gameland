@@ -43,3 +43,19 @@ Render の Free Web Service で動かせます。Socket.IO を使うため、Sta
 - Plan: `Free`
 
 このリポジトリには Render Blueprint 用の `render.yaml` も含めています。
+
+## Renderで不安定なとき
+
+次の症状がある場合は、Static Site として作られている可能性が高いです。
+
+- `/join` を更新すると Not Found になる
+- `/socket.io/socket.io.js` が 404 になる
+- スマートフォン操作が大画面に反映されない
+
+Render Dashboard でサービス種別が `Web Service`、Runtime が `Node` になっていることを確認してください。Static Site ではこのゲームは動きません。
+
+Web Service 側の設定:
+
+- Health Check Path: `/healthz`
+- Build Command: `npm install`
+- Start Command: `npm start`

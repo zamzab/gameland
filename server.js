@@ -13,6 +13,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
+const HOST = "0.0.0.0";
 const MAX_PLAYERS = 5;
 const START_STEP = 8;
 const RACE_STEP = 3.2;
@@ -29,7 +30,18 @@ const freshGame = () => ({
 
 let game = freshGame();
 
-app.use(express.static(path.join(__dirname, "public")));
+app.disable("x-powered-by");
+
+app.get("/healthz", (_req, res) => {
+  res.status(200).json({ ok: true, phase: game.phase, players: game.players.length });
+});
+
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    extensions: ["html"],
+    maxAge: "5m"
+  })
+);
 
 app.get("/qr.svg", async (req, res) => {
   const url = typeof req.query.url === "string" ? req.query.url : "";
@@ -49,8 +61,12 @@ app.get("/qr.svg", async (req, res) => {
   );
 });
 
-app.get("/join", (_req, res) => {
+app.get(["/join", "/join/"], (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "join.html"));
+});
+
+app.get("/api/state", (_req, res) => {
+  res.json(publicState());
 });
 
 const publicState = () => ({
@@ -187,6 +203,13 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Bike race running on http://localhost:${PORT}`);
+app.use((_req, res) => {
+  res.status(404).sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 125000;
+
+server.listen(PORT, HOST, () => {
+  console.log(`Bike race running on http://${HOST}:${PORT}`);
 });
