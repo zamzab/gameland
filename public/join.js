@@ -1,4 +1,4 @@
-const socket = io();
+const socket = io({ autoConnect: false });
 const form = document.querySelector("#join-form");
 const input = document.querySelector("#name-input");
 const message = document.querySelector("#message");
@@ -10,24 +10,43 @@ const phaseText = document.querySelector("#phase-text");
 const left = document.querySelector("#left");
 const right = document.querySelector("#right");
 
-let myId = null;
-let myName = "";
+const storageKey = "qr-bike-rider";
+let storedRider = null;
+try {
+  storedRider = JSON.parse(localStorage.getItem(storageKey) || "null");
+} catch {
+  localStorage.removeItem(storageKey);
+}
+
+let myId = storedRider?.id || null;
+let myName = storedRider?.name || "";
 let lastPressed = null;
+
+const makeClientId = () => {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const showController = (name) => {
+  myName = name;
+  riderName.textContent = myName;
+  nameCard.classList.add("hidden");
+  controller.classList.remove("hidden");
+};
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const name = input.value.trim().replace(/\s+/g, "").slice(0, 4);
-  socket.emit("join", name, (response) => {
+  const clientId = myId || makeClientId();
+  socket.emit("join", { name, clientId }, (response) => {
     if (!response?.ok) {
       message.textContent = response?.message || "参加できませんでした";
       return;
     }
 
     myId = response.playerId;
-    myName = name;
-    riderName.textContent = myName;
-    nameCard.classList.add("hidden");
-    controller.classList.remove("hidden");
+    localStorage.setItem(storageKey, JSON.stringify({ id: myId, name }));
+    showController(name);
   });
 });
 
@@ -67,3 +86,36 @@ socket.on("state", (state) => {
     phaseText.textContent = "参加待ち";
   }
 });
+
+socket.on("connect", () => {
+  if (!myId) return;
+
+  socket.emit("resume", myId, (response) => {
+    if (!response?.ok) {
+      localStorage.removeItem(storageKey);
+      myId = null;
+      nameCard.classList.remove("hidden");
+      controller.classList.add("hidden");
+      return;
+    }
+
+    myId = response.playerId;
+    localStorage.setItem(storageKey, JSON.stringify({ id: myId, name: response.name }));
+    showController(response.name);
+  });
+});
+
+socket.on("reset-game", () => {
+  localStorage.removeItem(storageKey);
+  myId = null;
+  myName = "";
+  lastPressed = null;
+  input.value = "";
+  message.textContent = "4文字まで表示できます";
+  nameCard.classList.remove("hidden");
+  controller.classList.add("hidden");
+  left.classList.remove("active");
+  right.classList.remove("active");
+});
+
+socket.connect();

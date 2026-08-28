@@ -10,7 +10,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 120000,
+    skipMiddlewares: true
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
@@ -36,10 +41,26 @@ app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true, phase: game.phase, players: game.players.length });
 });
 
+const sendPage = (res, fileName) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, "public", fileName));
+};
+
+app.get("/", (_req, res) => {
+  sendPage(res, "index.html");
+});
+
+app.get(["/join", "/join/"], (_req, res) => {
+  sendPage(res, "join.html");
+});
+
 app.use(
   express.static(path.join(__dirname, "public"), {
     extensions: ["html"],
-    maxAge: "5m"
+    maxAge: 0,
+    setHeaders: (res) => {
+      res.setHeader("Cache-Control", "no-cache");
+    }
   })
 );
 
@@ -59,10 +80,6 @@ app.get("/qr.svg", async (req, res) => {
       color: { dark: "#111827", light: "#ffffff" }
     })
   );
-});
-
-app.get(["/join", "/join/"], (_req, res) => {
-  res.sendFile(path.join(__dirname, "public", "join.html"));
 });
 
 app.get("/api/state", (_req, res) => {
@@ -91,6 +108,11 @@ const emitState = () => {
 };
 
 const getPlayer = (socket) => game.players.find((player) => player.id === socket.data.playerId);
+
+const cleanPlayerId = (value) =>
+  String(value || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 48);
 
 const allRidersAtStart = () =>
   game.players.length === MAX_PLAYERS &&
@@ -121,17 +143,34 @@ const beginCountdown = () => {
 const resetGame = () => {
   if (game.countdownTimer) clearInterval(game.countdownTimer);
   game = freshGame();
+  io.emit("reset-game");
   emitState();
 };
 
 io.on("connection", (socket) => {
   socket.emit("state", publicState());
 
-  socket.on("join", (name, reply) => {
-    const cleanName = String(name || "")
+  socket.on("resume", (clientId, reply) => {
+    const playerId = cleanPlayerId(clientId);
+    const player = game.players.find((item) => item.id === playerId);
+    if (!player) {
+      reply?.({ ok: false });
+      return;
+    }
+
+    socket.data.playerId = player.id;
+    player.socketId = socket.id;
+    player.connected = true;
+    reply?.({ ok: true, playerId: player.id, name: player.name, lane: player.lane });
+    emitState();
+  });
+
+  socket.on("join", (payload, reply) => {
+    const cleanName = String(payload?.name ?? payload ?? "")
       .trim()
       .replace(/\s+/g, "")
       .slice(0, 4);
+    const requestedId = cleanPlayerId(payload?.clientId);
 
     if (!cleanName) {
       reply?.({ ok: false, message: "名前を入力してください" });
@@ -143,25 +182,49 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (game.players.length >= MAX_PLAYERS) {
+    const existingPlayer = game.players.find((player) => player.id === requestedId);
+    if (existingPlayer) {
+      socket.data.playerId = existingPlayer.id;
+      existingPlayer.name = cleanName;
+      existingPlayer.socketId = socket.id;
+      existingPlayer.connected = true;
+      reply?.({ ok: true, playerId: existingPlayer.id, lane: existingPlayer.lane });
+      emitState();
+      return;
+    }
+
+    const reusablePlayer = game.players.find((player) => !player.connected);
+    if (game.players.length >= MAX_PLAYERS && !reusablePlayer) {
       reply?.({ ok: false, message: "参加枠がいっぱいです" });
       return;
     }
 
-    const player = {
-      id: socket.id,
-      name: cleanName,
-      lane: game.players.length,
-      color: colors[game.players.length],
+    const lane = reusablePlayer?.lane ?? game.players.length;
+    const player = reusablePlayer ?? {
+      id: requestedId || socket.id,
+      lane,
+      color: colors[lane],
       ready: true,
       approach: 0,
       distance: 0,
-      lastButton: null,
-      connected: true
+      lastButton: null
     };
 
+    Object.assign(player, {
+      id: requestedId || player.id,
+      name: cleanName,
+      lane,
+      color: colors[lane],
+      ready: true,
+      approach: reusablePlayer ? 0 : player.approach,
+      distance: reusablePlayer ? 0 : player.distance,
+      lastButton: null,
+      socketId: socket.id,
+      connected: true
+    });
+
     socket.data.playerId = player.id;
-    game.players.push(player);
+    if (!reusablePlayer) game.players.push(player);
     if (game.phase === "lobby") game.phase = "staging";
 
     reply?.({ ok: true, playerId: player.id, lane: player.lane });
@@ -196,7 +259,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const player = getPlayer(socket);
-    if (player) {
+    if (player && player.socketId === socket.id) {
       player.connected = false;
       emitState();
     }
@@ -204,7 +267,12 @@ io.on("connection", (socket) => {
 });
 
 app.use((_req, res) => {
-  res.status(404).sendFile(path.join(__dirname, "public", "index.html"));
+  if (_req.accepts("html")) {
+    sendPage(res, "index.html");
+    return;
+  }
+
+  res.status(404).send("Not found");
 });
 
 server.keepAliveTimeout = 120000;
