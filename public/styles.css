@@ -137,12 +137,12 @@ h1 {
   position: absolute;
   left: 14px;
   top: 12px;
-  width: 36px;
+  width: 48px;
   height: 36px;
   display: grid;
   place-items: center;
   border: 2px solid #111827;
-  border-radius: 50%;
+  border-radius: 8px;
   background: #ffffff;
   font-weight: 900;
 }
@@ -151,7 +151,7 @@ h1 {
   position: absolute;
   left: -13%;
   bottom: 8px;
-  width: clamp(108px, 10vw, 150px);
+  width: clamp(98px, 9vw, 135px);
   transform: translateX(-74.5%);
   transition: left 150ms ease-out;
   will-change: left;
@@ -468,7 +468,7 @@ h1 {
   }
 
   .rider {
-    width: 104px;
+    width: 94px;
   }
 
   .rider-name {
@@ -494,27 +494,35 @@ h1 {
   }
 
   .controller {
-    grid-template-columns: minmax(130px, 0.65fr) minmax(150px, 0.8fr) 2fr;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
     align-items: stretch;
-  }
-
-  .rider-badge,
-  .phase-text {
-    min-height: 0;
-    height: 100%;
+    gap: 8px;
   }
 
   .rider-badge {
-    flex-direction: column;
-    font-size: 24px;
+    align-self: start;
+    grid-row: 1;
+    justify-self: start;
+    min-height: 0;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 22px;
   }
 
   .phase-text {
+    align-self: start;
+    grid-row: 1;
+    justify-self: end;
+    width: min(62%, 520px);
+    min-height: 44px;
+    height: 44px;
     padding: 8px;
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .pedals {
+    grid-row: 2;
     min-height: 0;
   }
 

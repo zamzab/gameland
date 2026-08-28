@@ -11,17 +11,19 @@ const joinUrl = `${window.location.origin}/join`;
 qr.src = `/qr.svg?url=${encodeURIComponent(joinUrl)}`;
 joinUrlText.textContent = joinUrl;
 
-const laneNames = ["A", "B", "C", "D", "E"];
+const laneNames = ["1枠", "2枠", "3枠", "4枠", "5枠"];
 const WAIT_X = -9;
 const START_X = 8.4;
 const GOAL_X = 90.3;
-const bikeImage = (player) => `/assets/bike-rider-${player?.colorKey || "red"}.png`;
+const laneColorKeys = ["red", "blue", "green", "yellow", "black"];
+const bikeImage = (colorKey) => `/assets/bike-rider-${colorKey || "red"}.png`;
 
 const render = (state) => {
   track.innerHTML = "";
 
   for (let lane = 0; lane < state.maxPlayers; lane += 1) {
     const player = state.players.find((item) => item.lane === lane);
+    const laneColorKey = player?.colorKey || laneColorKeys[lane];
     const laneEl = document.createElement("div");
     laneEl.className = "lane";
 
@@ -52,7 +54,7 @@ const render = (state) => {
     const bike = document.createElement("div");
     bike.className = "bike";
     const bikeImg = document.createElement("img");
-    bikeImg.src = player ? bikeImage(player) : "/assets/bike-rider-red.png";
+    bikeImg.src = bikeImage(laneColorKey);
     bikeImg.alt = "";
     bikeImg.draggable = false;
     bike.append(bikeImg);
@@ -90,7 +92,7 @@ const render = (state) => {
     statusText.textContent = `${winner?.name || ""} さんの勝利`;
     overlay.innerHTML = `
       <div class="winner-card">
-        <div class="winner-bike"><img src="${bikeImage(winner)}" alt="" /></div>
+        <div class="winner-bike"><img src="${bikeImage(winner?.colorKey)}" alt="" /></div>
         <strong>${winner?.name || "WINNER"}</strong>
         <span>優勝!</span>
       </div>
