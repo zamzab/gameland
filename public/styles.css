@@ -266,6 +266,7 @@ h1 {
 }
 
 #reset-button,
+#start-button,
 .phone-card button {
   min-height: 48px;
   border: 2px solid #111827;
@@ -274,6 +275,23 @@ h1 {
   box-shadow: 3px 3px 0 #111827;
   cursor: pointer;
   font-weight: 900;
+}
+
+#start-button {
+  background: #f4d06f;
+}
+
+#reset-button:disabled,
+#start-button:disabled {
+  opacity: 0.45;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.screen-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .phone-body {

@@ -114,15 +114,21 @@ const cleanPlayerId = (value) =>
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 48);
 
-const allRidersAtStart = () =>
-  game.players.length === MAX_PLAYERS &&
-  game.players.every((player) => player.ready && player.approach >= 100);
+const ridersAtStart = () =>
+  game.players.length > 0 && game.players.every((player) => player.ready && player.approach >= 100);
 
-const beginCountdown = () => {
-  if (game.phase !== "staging" || !allRidersAtStart()) return;
+const beginCountdown = (force = false) => {
+  if (game.phase !== "staging" || game.players.length === 0) return;
+  if (!force && game.players.length < MAX_PLAYERS) return;
+  if (!force && !ridersAtStart()) return;
 
   game.phase = "countdown";
   game.countdown = 5;
+  game.players.forEach((player) => {
+    player.approach = 100;
+    player.distance = 0;
+    player.lastButton = null;
+  });
   emitState();
 
   game.countdownTimer = setInterval(() => {
@@ -135,6 +141,9 @@ const beginCountdown = () => {
       game.countdownTimer = null;
       game.phase = "racing";
       game.countdown = null;
+      game.players.forEach((player) => {
+        player.lastButton = null;
+      });
     }
     emitState();
   }, 1000);
@@ -256,6 +265,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("reset", () => resetGame());
+
+  socket.on("start-countdown", () => beginCountdown(true));
 
   socket.on("disconnect", () => {
     const player = getPlayer(socket);

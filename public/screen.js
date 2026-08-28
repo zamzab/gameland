@@ -5,12 +5,16 @@ const statusText = document.querySelector("#status");
 const qr = document.querySelector("#qr");
 const joinUrlText = document.querySelector("#join-url");
 const resetButton = document.querySelector("#reset-button");
+const startButton = document.querySelector("#start-button");
 
 const joinUrl = `${window.location.origin}/join`;
 qr.src = `/qr.svg?url=${encodeURIComponent(joinUrl)}`;
 joinUrlText.textContent = joinUrl;
 
 const laneNames = ["A", "B", "C", "D", "E"];
+const WAIT_X = -9;
+const START_X = 8.4;
+const GOAL_X = 90.3;
 
 const bikeSvg = (color) => `
   <svg viewBox="0 0 140 78" aria-hidden="true">
@@ -49,12 +53,16 @@ const render = (state) => {
     const rider = document.createElement("div");
     rider.className = player ? "rider" : "rider rider-empty";
 
-    const percent = player
-      ? state.phase === "staging" || state.phase === "countdown"
-        ? -13 + player.approach * 0.13
-        : player.distance
-      : -13;
-    rider.style.left = `${Math.max(-13, Math.min(100, percent))}%`;
+    const progress = player
+      ? state.phase === "staging"
+        ? player.approach / 100
+        : player.distance / 100
+      : 0;
+    const percent =
+      state.phase === "staging" || state.phase === "lobby"
+        ? WAIT_X + (START_X - WAIT_X) * progress
+        : START_X + (GOAL_X - START_X) * progress;
+    rider.style.left = `${Math.max(WAIT_X, Math.min(GOAL_X, percent))}%`;
 
     const name = document.createElement("div");
     name.className = "rider-name";
@@ -76,18 +84,22 @@ const render = (state) => {
     statusText.textContent = "QRコードを読み込んで参加してください";
     overlay.textContent = "";
     overlay.className = "overlay";
+    startButton.disabled = true;
   } else if (state.phase === "staging") {
-    statusText.textContent = `${filled}/5 名参加中。全員がスタートラインまで進むとカウント開始`;
-    overlay.textContent = filled < 5 ? `あと ${5 - filled} 名` : `スタートラインへ ${atStart}/5`;
+    statusText.textContent = `${filled}/5 名参加中。カウント開始で少人数レースも開始できます`;
+    overlay.textContent = filled < 5 ? `${filled} 名で待機中` : `スタートラインへ ${atStart}/5`;
     overlay.className = "overlay hint";
+    startButton.disabled = filled === 0;
   } else if (state.phase === "countdown") {
     statusText.textContent = "まもなくスタート";
     overlay.textContent = state.countdown;
     overlay.className = "overlay countdown";
+    startButton.disabled = true;
   } else if (state.phase === "racing") {
     statusText.textContent = "レース中";
     overlay.textContent = "";
     overlay.className = "overlay";
+    startButton.disabled = true;
   } else if (state.phase === "finished") {
     const winner = state.players.find((player) => player.id === state.winnerId);
     statusText.textContent = `${winner?.name || ""} さんの勝利`;
@@ -100,8 +112,10 @@ const render = (state) => {
       <div class="confetti">${Array.from({ length: 80 }, (_, index) => `<i style="--i:${index}"></i>`).join("")}</div>
     `;
     overlay.className = "overlay finished";
+    startButton.disabled = true;
   }
 };
 
 socket.on("state", render);
 resetButton.addEventListener("click", () => socket.emit("reset"));
+startButton.addEventListener("click", () => socket.emit("start-countdown"));
