@@ -20,8 +20,8 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
 const MAX_PLAYERS = 5;
-const START_STEP = 12;
-const RACE_STEP = 4.5;
+const START_STEP = 8;
+const RACE_STEP = 3;
 
 const riders = [
   { color: "#e24a4a", key: "red" },
