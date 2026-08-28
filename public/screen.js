@@ -15,27 +15,7 @@ const laneNames = ["A", "B", "C", "D", "E"];
 const WAIT_X = -9;
 const START_X = 8.4;
 const GOAL_X = 90.3;
-
-const bikeSvg = (color) => `
-  <svg viewBox="0 0 140 78" aria-hidden="true">
-    <g fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="31" cy="55" r="16" fill="#f8fafc"/>
-      <circle cx="108" cy="55" r="16" fill="#f8fafc"/>
-      <path d="M31 55 L57 55 L77 31 L108 55 L70 55 L54 30"/>
-      <path d="M54 30 L44 23"/>
-      <path d="M77 31 L91 24"/>
-      <path d="M88 21 L100 21"/>
-    </g>
-    <g>
-      <circle cx="65" cy="15" r="10" fill="#ffd7a8" stroke="#111827" stroke-width="4"/>
-      <path d="M61 26 L74 36 L87 31" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
-      <path d="M62 26 L51 43" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
-      <path d="M69 35 L58 55" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
-      <path d="M74 36 L92 55" fill="none" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
-      <path d="M56 24 Q66 18 79 25 L73 38 Q62 36 54 30 Z" fill="${color}" stroke="#111827" stroke-width="4"/>
-    </g>
-  </svg>
-`;
+const bikeImage = "/assets/bike-rider.png";
 
 const render = (state) => {
   track.innerHTML = "";
@@ -67,10 +47,15 @@ const render = (state) => {
     const name = document.createElement("div");
     name.className = "rider-name";
     name.textContent = player?.name || "募集中";
+    if (player) name.style.borderColor = player.color;
 
     const bike = document.createElement("div");
     bike.className = "bike";
-    bike.innerHTML = player ? bikeSvg(player.color) : bikeSvg("#cbd5e1");
+    const bikeImg = document.createElement("img");
+    bikeImg.src = bikeImage;
+    bikeImg.alt = "";
+    bikeImg.draggable = false;
+    bike.append(bikeImg);
 
     rider.append(name, bike);
     laneEl.append(rider);
@@ -105,7 +90,7 @@ const render = (state) => {
     statusText.textContent = `${winner?.name || ""} さんの勝利`;
     overlay.innerHTML = `
       <div class="winner-card">
-        <div class="winner-bike">${bikeSvg(winner?.color || "#e24a4a")}</div>
+        <div class="winner-bike"><img src="${bikeImage}" alt="" /></div>
         <strong>${winner?.name || "WINNER"}</strong>
         <span>優勝!</span>
       </div>

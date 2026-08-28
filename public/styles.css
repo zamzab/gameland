@@ -136,8 +136,8 @@ h1 {
   position: absolute;
   left: -13%;
   bottom: 8px;
-  width: clamp(112px, 12vw, 168px);
-  transform: translateX(-50%);
+  width: clamp(108px, 10vw, 150px);
+  transform: translateX(-74.5%);
   transition: left 150ms ease-out;
   will-change: left;
 }
@@ -161,10 +161,11 @@ h1 {
   white-space: nowrap;
 }
 
-.bike svg {
+.bike img {
   width: 100%;
   display: block;
-  filter: drop-shadow(3px 5px 0 rgba(17, 24, 39, 0.22));
+  filter: drop-shadow(3px 5px 0 rgba(17, 24, 39, 0.2));
+  user-select: none;
 }
 
 .track-label {
@@ -221,6 +222,11 @@ h1 {
 .winner-bike {
   width: min(360px, 58vw);
   margin: 0 auto;
+}
+
+.winner-bike img {
+  width: 100%;
+  display: block;
 }
 
 .winner-card strong {
