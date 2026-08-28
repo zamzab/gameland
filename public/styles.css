@@ -15,15 +15,30 @@
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+html,
+body {
+  touch-action: manipulation;
+}
+
 body {
   margin: 0;
   color: var(--ink);
   background: var(--paper);
+  -webkit-text-size-adjust: 100%;
 }
 
 button,
 input {
   font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .screen-body {
@@ -302,6 +317,10 @@ h1 {
 
 .phone-body {
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.22)),
     linear-gradient(135deg, #95d778, #f4d06f 55%, #7dc9e8);
@@ -309,9 +328,10 @@ h1 {
 
 .phone {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 18px;
+  padding: 12px;
 }
 
 .phone-card,
@@ -354,7 +374,7 @@ h1 {
 
 .controller {
   display: grid;
-  gap: 22px;
+  gap: 14px;
 }
 
 .hidden {
@@ -404,7 +424,9 @@ h1 {
   box-shadow: 5px 6px 0 #111827;
   font-size: clamp(56px, 18vw, 112px);
   font-weight: 1000;
-  touch-action: manipulation;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .pedals button.active {
@@ -455,5 +477,50 @@ h1 {
 
   .race-footer {
     font-size: 16px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .phone {
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .phone-card,
+  .controller {
+    width: min(100%, 820px);
+    min-height: calc(100dvh - 16px);
+    padding: 12px;
+  }
+
+  .controller {
+    grid-template-columns: minmax(130px, 0.65fr) minmax(150px, 0.8fr) 2fr;
+    align-items: stretch;
+  }
+
+  .rider-badge,
+  .phase-text {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .rider-badge {
+    flex-direction: column;
+    font-size: 24px;
+  }
+
+  .phase-text {
+    padding: 8px;
+    font-size: 20px;
+  }
+
+  .pedals {
+    min-height: 0;
+  }
+
+  .pedals button {
+    height: 100%;
+    min-height: 0;
+    font-size: clamp(48px, 15vh, 92px);
   }
 }

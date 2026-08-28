@@ -1,0 +1,16 @@
+{
+  "name": "コミチ杯 みんなでペダルレース",
+  "short_name": "コミチ杯",
+  "start_url": "/join",
+  "display": "fullscreen",
+  "background_color": "#95d778",
+  "theme_color": "#95d778",
+  "icons": [
+    {
+      "src": "/assets/bike-rider-red.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

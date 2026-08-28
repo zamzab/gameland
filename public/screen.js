@@ -15,7 +15,7 @@ const laneNames = ["A", "B", "C", "D", "E"];
 const WAIT_X = -9;
 const START_X = 8.4;
 const GOAL_X = 90.3;
-const bikeImage = "/assets/bike-rider.png";
+const bikeImage = (player) => `/assets/bike-rider-${player?.colorKey || "red"}.png`;
 
 const render = (state) => {
   track.innerHTML = "";
@@ -52,7 +52,7 @@ const render = (state) => {
     const bike = document.createElement("div");
     bike.className = "bike";
     const bikeImg = document.createElement("img");
-    bikeImg.src = bikeImage;
+    bikeImg.src = player ? bikeImage(player) : "/assets/bike-rider-red.png";
     bikeImg.alt = "";
     bikeImg.draggable = false;
     bike.append(bikeImg);
@@ -90,7 +90,7 @@ const render = (state) => {
     statusText.textContent = `${winner?.name || ""} さんの勝利`;
     overlay.innerHTML = `
       <div class="winner-card">
-        <div class="winner-bike"><img src="${bikeImage}" alt="" /></div>
+        <div class="winner-bike"><img src="${bikeImage(winner)}" alt="" /></div>
         <strong>${winner?.name || "WINNER"}</strong>
         <span>優勝!</span>
       </div>

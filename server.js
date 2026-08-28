@@ -20,10 +20,16 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
 const MAX_PLAYERS = 5;
-const START_STEP = 8;
-const RACE_STEP = 3.2;
+const START_STEP = 12;
+const RACE_STEP = 4.5;
 
-const colors = ["#e24a4a", "#2f80ed", "#20a67a", "#f2b705", "#8a5cf6"];
+const riders = [
+  { color: "#e24a4a", key: "red" },
+  { color: "#2f80ed", key: "blue" },
+  { color: "#20a67a", key: "green" },
+  { color: "#f2b705", key: "yellow" },
+  { color: "#111827", key: "black" }
+];
 
 const freshGame = () => ({
   phase: "lobby",
@@ -96,6 +102,7 @@ const publicState = () => ({
     name: player.name,
     lane: player.lane,
     color: player.color,
+    colorKey: player.colorKey,
     ready: player.ready,
     approach: player.approach,
     distance: player.distance,
@@ -212,7 +219,8 @@ io.on("connection", (socket) => {
     const player = reusablePlayer ?? {
       id: requestedId || socket.id,
       lane,
-      color: colors[lane],
+      color: riders[lane].color,
+      colorKey: riders[lane].key,
       ready: true,
       approach: 0,
       distance: 0,
@@ -223,7 +231,8 @@ io.on("connection", (socket) => {
       id: requestedId || player.id,
       name: cleanName,
       lane,
-      color: colors[lane],
+      color: riders[lane].color,
+      colorKey: riders[lane].key,
       ready: true,
       approach: reusablePlayer ? 0 : player.approach,
       distance: reusablePlayer ? 0 : player.distance,

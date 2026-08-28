@@ -21,6 +21,7 @@ try {
 let myId = storedRider?.id || null;
 let myName = storedRider?.name || "";
 let lastPressed = null;
+let fullscreenRequested = false;
 
 const makeClientId = () => {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -34,8 +35,17 @@ const showController = (name) => {
   controller.classList.remove("hidden");
 };
 
+const requestFullscreenOnce = () => {
+  if (fullscreenRequested) return;
+  fullscreenRequested = true;
+  const root = document.documentElement;
+  if (document.fullscreenElement || !root.requestFullscreen) return;
+  root.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+};
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  requestFullscreenOnce();
   const name = input.value.trim().replace(/\s+/g, "").slice(0, 4);
   const clientId = myId || makeClientId();
   socket.emit("join", { name, clientId }, (response) => {
@@ -62,8 +72,21 @@ const pedal = (side) => {
   socket.emit("pedal", side);
 };
 
-left.addEventListener("click", () => pedal("left"));
-right.addEventListener("click", () => pedal("right"));
+const bindPedal = (button, side) => {
+  button.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      requestFullscreenOnce();
+      button.setPointerCapture?.(event.pointerId);
+      pedal(side);
+    },
+    { passive: false }
+  );
+};
+
+bindPedal(left, "left");
+bindPedal(right, "right");
 
 socket.on("state", (state) => {
   const me = state.players.find((player) => player.id === myId);
