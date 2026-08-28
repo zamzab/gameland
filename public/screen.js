@@ -18,6 +18,7 @@ const GOAL_X = 90.3;
 const laneColorKeys = ["red", "blue", "green", "yellow", "black"];
 const bikeImage = (colorKey) => `/assets/bike-rider-${colorKey || "red"}.png`;
 const adminPinKey = "qr-bike-admin-pin";
+let adminPinRequired = true;
 
 const getAdminPin = () => {
   const savedPin = sessionStorage.getItem(adminPinKey);
@@ -29,8 +30,8 @@ const getAdminPin = () => {
 };
 
 const emitAdmin = (eventName) => {
-  const pin = getAdminPin();
-  if (!pin) return;
+  const pin = adminPinRequired ? getAdminPin() : "";
+  if (adminPinRequired && !pin) return;
 
   socket.emit(eventName, { pin }, (response) => {
     if (response?.ok) return;
@@ -75,6 +76,7 @@ const renderWinner = (winner) => {
 };
 
 const render = (state) => {
+  adminPinRequired = state.adminPinRequired !== false;
   track.replaceChildren();
 
   for (let lane = 0; lane < state.maxPlayers; lane += 1) {

@@ -25,6 +25,7 @@ const MAX_PLAYERS = 5;
 const START_STEP = 8;
 const RACE_STEP = 3;
 const ADMIN_PIN = process.env.ADMIN_PIN || "0000";
+const ADMIN_PIN_REQUIRED = ADMIN_PIN !== "0000";
 
 const riders = [
   { color: "#e24a4a", key: "red" },
@@ -117,6 +118,7 @@ const publicState = () => ({
   countdown: game.countdown,
   winnerId: game.winnerId,
   maxPlayers: MAX_PLAYERS,
+  adminPinRequired: ADMIN_PIN_REQUIRED,
   players: game.players.map((player) => ({
     id: player.id,
     name: player.name,
@@ -147,6 +149,8 @@ const cleanToken = (value) =>
     .slice(0, 64);
 
 const verifyAdminPin = (payload) => {
+  if (!ADMIN_PIN_REQUIRED) return true;
+
   const supplied = String(payload?.pin || "");
   const expected = String(ADMIN_PIN);
   const suppliedBuffer = Buffer.from(supplied);
